@@ -443,16 +443,12 @@ static int mlx5e_dcbnl_ieee_setapp(struct net_device *dev, struct dcb_app *app)
 	bool is_new;
 	int err;
 
-	if (app->selector != IEEE_8021QAZ_APP_SEL_DSCP)
-		return -EINVAL;
+	if (!MLX5_CAP_GEN(priv->mdev, vport_group_manager) ||
+	    !MLX5_DSCP_SUPPORTED(priv->mdev))
+		return -EOPNOTSUPP;
 
-	if (!MLX5_CAP_GEN(priv->mdev, vport_group_manager))
-		return -EINVAL;
-
-	if (!MLX5_DSCP_SUPPORTED(priv->mdev))
-		return -EINVAL;
-
-	if (app->protocol >= MLX5E_MAX_DSCP)
+	if ((app->selector != IEEE_8021QAZ_APP_SEL_DSCP) ||
+	    (app->protocol >= MLX5E_MAX_DSCP))
 		return -EINVAL;
 
 	/* Save the old entry info */
@@ -500,16 +496,12 @@ static int mlx5e_dcbnl_ieee_delapp(struct net_device *dev, struct dcb_app *app)
 	struct mlx5e_priv *priv = netdev_priv(dev);
 	int err;
 
-	if (app->selector != IEEE_8021QAZ_APP_SEL_DSCP)
-		return -EINVAL;
+	if  (!MLX5_CAP_GEN(priv->mdev, vport_group_manager) ||
+	     !MLX5_DSCP_SUPPORTED(priv->mdev))
+		return -EOPNOTSUPP;
 
-	if (!MLX5_CAP_GEN(priv->mdev, vport_group_manager))
-		return -EINVAL;
-
-	if (!MLX5_DSCP_SUPPORTED(priv->mdev))
-		return -EINVAL;
-
-	if (app->protocol >= MLX5E_MAX_DSCP)
+	if ((app->selector != IEEE_8021QAZ_APP_SEL_DSCP) ||
+	    (app->protocol >= MLX5E_MAX_DSCP))
 		return -EINVAL;
 
 	/* Skip if no dscp app entry */
@@ -1134,9 +1126,7 @@ static void mlx5e_trust_update_sq_inline_mode(struct mlx5e_priv *priv)
 	    priv->channels.params.tx_min_inline_mode)
 		goto out;
 
-	if (mlx5e_open_channels(priv, &new_channels))
-		goto out;
-	mlx5e_switch_priv_channels(priv, &new_channels, NULL);
+	mlx5e_safe_switch_channels(priv, &new_channels, NULL);
 
 out:
 	mutex_unlock(&priv->state_lock);
@@ -1146,7 +1136,7 @@ static int mlx5e_set_trust_state(struct mlx5e_priv *priv, u8 trust_state)
 {
 	int err;
 
-	err =  mlx5_set_trust_state(priv->mdev, trust_state);
+	err = mlx5_set_trust_state(priv->mdev, trust_state);
 	if (err)
 		return err;
 	priv->dcbx_dp.trust_state = trust_state;
