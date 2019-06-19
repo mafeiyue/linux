@@ -14,6 +14,7 @@
 #include <linux/module.h>
 #include <linux/etherdevice.h>
 #include <linux/hash.h>
+#include <net/ipv6_stubs.h>
 #include <net/dst_metadata.h>
 #include <net/gro_cells.h>
 #include <net/rtnetlink.h>
@@ -21,8 +22,6 @@
 #include <net/protocol.h>
 
 #define GENEVE_NETDEV_VER	"0.6"
-
-#define GENEVE_UDP_PORT		6081
 
 #define GENEVE_N_VID		(1u << 24)
 #define GENEVE_VID_MASK		(GENEVE_N_VID - 1)
@@ -396,7 +395,7 @@ static int geneve_udp_encap_err_lookup(struct sock *sk, struct sk_buff *skb)
 	u8 zero_vni[3] = { 0 };
 	u8 *vni = zero_vni;
 
-	if (skb->len < GENEVE_BASE_HLEN)
+	if (!pskb_may_pull(skb, skb_transport_offset(skb) + GENEVE_BASE_HLEN))
 		return -EINVAL;
 
 	geneveh = geneve_hdr(skb);
